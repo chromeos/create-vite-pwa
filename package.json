@@ -1,0 +1,26 @@
+{
+  "name": "vite-pwa-starter",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/googlestaging/vite-pwa-starter.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/googlestaging/vite-pwa-starter/issues"
+  },
+  "homepage": "https://github.com/googlestaging/vite-pwa-starter#readme",
+  "dependencies": {
+    "create-vite": "^2.5.4",
+    "kolorist": "^1.5.0",
+    "minimist": "^1.2.5",
+    "posthtml": "^0.16.5",
+    "prompts": "^2.4.1"
+  }
+}
