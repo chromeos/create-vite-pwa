@@ -10,4 +10,12 @@ This is an enhancement to the [create Vite](https://github.com/vitejs/vite/tree/
 
 ## Usage
 
-Run `npm init create-vite-pwa`.
+Run `npm init create-vite-pwa [PROJECT-DIR]`.
+
+You can pass the following flags in to set options instead of going through the prompts:
+
+| Flag                                                | Description                                                                 |
+| :-------------------------------------------------- | :-------------------------------------------------------------------------- |
+| `-f FRAMEWORK` / `-framework FRAMEWORK`             | Framework to use                                                            |
+| `{--ts \| --js}` / `{--typescript \| --javascript}` | Whether to use TypeScript or JavaScript                                     |
+| `--overwrite`                                       | If a project directory is included, overwrite its content if it's not empty |
