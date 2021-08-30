@@ -57,6 +57,10 @@ let typescript = argv.typescript || argv.ts;
 let overwrite = argv.overwrite;
 const defaultProjectName = !targetDir ? "vite-pwa" : targetDir;
 
+if (argv.javascript || argv.js) {
+  typescript = false;
+}
+
 if (targetDir === undefined) {
   overwrite = false;
 }
@@ -148,9 +152,13 @@ inquirer
       ensureDirSync(root);
     }
 
-    const {color} = isAvailableFramework(options.framework);
+    const { color } = isAvailableFramework(options.framework);
 
-    console.log(`\nScaffolding ${chalk[color](options.framework)} project${options.typescript ? chalk.bold(' with TypeScript') : ''} in:\n${root}`);
+    console.log(
+      `\nScaffolding ${chalk[color](options.framework)} project${
+        options.typescript ? chalk.bold(" with TypeScript") : ""
+      } in:\n${root}`
+    );
 
     const template = options.framework + (options.typescript ? "-ts" : "");
 
