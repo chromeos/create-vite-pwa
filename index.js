@@ -16,329 +16,211 @@
  * limitations under the License.
  */
 
-/**
- * Substantial portions of this file have been adapted from create-vite, which
- * includes the following copyright information and is licensed under the MIT License:
- *
- * Copyright (c) 2019-present, Yuxi (Evan) You and Vite contributors
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- */
-
+const inquirer = require("inquirer");
+const chalk = require("chalk");
+const {
+  emptyDirSync,
+  ensureDirSync,
+  copySync,
+  moveSync,
+  writeJsonSync,
+} = require("fs-extra");
+const argv = require("minimist")(process.argv.slice(2), {
+  string: ["_"],
+  boolean: true,
+});
+const posthtml = require("posthtml");
 const fs = require("fs");
 const path = require("path");
-// Avoids autoconversion to number of the project name by defining that the args
-// non associated with an option ( _ ) needs to be parsed as a string. See #4606
-const argv = require("minimist")(process.argv.slice(2), { string: ["_"] });
-// eslint-disable-next-line node/no-restricted-require
-const prompts = require("prompts");
-const {
-  yellow,
-  green,
-  cyan,
-  blue,
-  magenta,
-  lightRed,
-  red,
-} = require("kolorist");
-const posthtml = require("posthtml");
 
-const cwd = process.cwd();
-const createViteDir = path.dirname(require.resolve("create-vite"));
+// Add Search List as prompt type
+inquirer.registerPrompt("search-list", require("inquirer-search-list"));
 
-const FRAMEWORKS = [
-  {
-    name: "vanilla",
-    color: yellow,
-    variants: [
-      {
-        name: "vanilla",
-        display: "JavaScript",
-        color: yellow,
-      },
-      {
-        name: "vanilla-ts",
-        display: "TypeScript",
-        color: blue,
-      },
-    ],
-  },
-  {
-    name: "vue",
-    color: green,
-    variants: [
-      {
-        name: "vue",
-        display: "JavaScript",
-        color: yellow,
-      },
-      {
-        name: "vue-ts",
-        display: "TypeScript",
-        color: blue,
-      },
-    ],
-  },
-  {
-    name: "react",
-    color: cyan,
-    variants: [
-      {
-        name: "react",
-        display: "JavaScript",
-        color: yellow,
-      },
-      {
-        name: "react-ts",
-        display: "TypeScript",
-        color: blue,
-      },
-    ],
-  },
-  {
-    name: "preact",
-    color: magenta,
-    variants: [
-      {
-        name: "preact",
-        display: "JavaScript",
-        color: yellow,
-      },
-      {
-        name: "preact-ts",
-        display: "TypeScript",
-        color: blue,
-      },
-    ],
-  },
-  {
-    name: "lit-element",
-    color: lightRed,
-    variants: [
-      {
-        name: "lit-element",
-        display: "JavaScript",
-        color: yellow,
-      },
-      {
-        name: "lit-element-ts",
-        display: "TypeScript",
-        color: blue,
-      },
-    ],
-  },
-  {
-    name: "svelte",
-    color: red,
-    variants: [
-      {
-        name: "svelte",
-        display: "JavaScript",
-        color: yellow,
-      },
-      {
-        name: "svelte-ts",
-        display: "TypeScript",
-        color: blue,
-      },
-    ],
-  },
-];
+// Set up frameworks and colors
+const frameworks = Object.entries({
+  vanilla: "yellow",
+  vue: "green",
+  react: "cyan",
+  preact: "magenta",
+  "lit-element": "blue",
+  svelte: "red",
+}).map(([name, color]) => ({
+  name: chalk[color](name),
+  value: name,
+  color,
+}));
 
-const TEMPLATES = FRAMEWORKS.map(
-  (f) => (f.variants && f.variants.map((v) => v.name)) || [f.name]
-).reduce((a, b) => a.concat(b), []);
+// Get default args
+let targetDir = argv._[0];
+let framework = argv.framework || argv.f;
+let typescript = argv.typescript || argv.ts;
+let overwrite = argv.overwrite;
+const defaultProjectName = !targetDir ? "vite-pwa" : targetDir;
 
-const renameFiles = {
-  _gitignore: ".gitignore",
-};
-
-async function init() {
-  let targetDir = argv._[0];
-  let template = argv.template || argv.t;
-
-  const defaultProjectName = !targetDir ? "vite-project" : targetDir;
-
-  let result = {};
-
-  try {
-    result = await prompts(
-      [
-        {
-          type: targetDir ? null : "text",
-          name: "projectName",
-          message: "Project name:",
-          initial: defaultProjectName,
-          onState: (state) =>
-            (targetDir = state.value.trim() || defaultProjectName),
-        },
-        {
-          type: () =>
-            !fs.existsSync(targetDir) || isEmpty(targetDir) ? null : "confirm",
-          name: "overwrite",
-          message: () =>
-            (targetDir === "."
-              ? "Current directory"
-              : `Target directory "${targetDir}"`) +
-            ` is not empty. Remove existing files and continue?`,
-        },
-        {
-          type: (_, { overwrite } = {}) => {
-            if (overwrite === false) {
-              throw new Error(red("✖") + " Operation cancelled");
-            }
-            return null;
-          },
-          name: "overwriteChecker",
-        },
-        {
-          type: () => (isValidPackageName(targetDir) ? null : "text"),
-          name: "packageName",
-          message: "Package name:",
-          initial: () => toValidPackageName(targetDir),
-          validate: (dir) =>
-            isValidPackageName(dir) || "Invalid package.json name",
-        },
-        {
-          type: template && TEMPLATES.includes(template) ? null : "select",
-          name: "framework",
-          message:
-            typeof template === "string" && !TEMPLATES.includes(template)
-              ? `"${template}" isn't a valid template. Please choose from below: `
-              : "Select a framework:",
-          initial: 0,
-          choices: FRAMEWORKS.map((framework) => {
-            const frameworkColor = framework.color;
-            return {
-              title: frameworkColor(framework.name),
-              value: framework,
-            };
-          }),
-        },
-        {
-          type: (framework) =>
-            framework && framework.variants ? "select" : null,
-          name: "variant",
-          message: "Select a variant:",
-          // @ts-ignore
-          choices: (framework) =>
-            framework.variants.map((variant) => {
-              const variantColor = variant.color;
-              return {
-                title: variantColor(variant.name),
-                value: variant.name,
-              };
-            }),
-        },
-      ],
-      {
-        onCancel: () => {
-          throw new Error(red("✖") + " Operation cancelled");
-        },
-      }
-    );
-  } catch (cancelled) {
-    console.log(cancelled.message);
-    return;
-  }
-
-  // user choice associated with prompts
-  const { framework, overwrite, packageName, variant } = result;
-
-  const root = path.join(cwd, targetDir);
-
-  if (overwrite) {
-    emptyDir(root);
-  } else if (!fs.existsSync(root)) {
-    fs.mkdirSync(root);
-  }
-
-  // determine template
-  template = variant || framework || template;
-
-  console.log(`\nScaffolding project in ${root}...`);
-
-  const templateDir = path.join(createViteDir, `template-${template}`);
-
-  const write = (file, content) => {
-    const targetPath = renameFiles[file]
-      ? path.join(root, renameFiles[file])
-      : path.join(root, file);
-    if (content) {
-      fs.writeFileSync(targetPath, content);
-    } else {
-      copy(path.join(templateDir, file), targetPath);
-    }
-  };
-
-  const files = fs.readdirSync(templateDir);
-  for (const file of files.filter((f) => f !== "package.json")) {
-    write(file);
-  }
-  const additions = fs.readdirSync(path.join(__dirname, "templates"));
-  for (const file of additions) {
-    const targetPath = renameFiles[file]
-      ? path.join(root, renameFiles[file])
-      : path.join(root, file);
-    copy(path.join(path.join(__dirname, "templates"), file), targetPath);
-  }
-
-  const pkg = require(path.join(templateDir, `package.json`));
-
-  pkg.name = packageName || targetDir;
-
-  const ts = variant.endsWith("-ts");
-
-  write(
-    "package.json",
-    JSON.stringify(require("./lib/update-package")(pkg, ts), null, 2)
-  );
-
-  const pkgInfo = pkgFromUserAgent(process.env.npm_config_user_agent);
-  const pkgManager = pkgInfo ? pkgInfo.name : "npm";
-
-  // Update index.html to include PWA stuff
-  const indexHTML = fs.readFileSync(path.join(root, "index.html"), "utf-8");
-  const updatedHTML = posthtml()
-    .use(require("./lib/posthtml-add-pwa.js")())
-    .process(indexHTML, { sync: true }).html;
-  fs.writeFileSync(path.join(root, "index.html"), updatedHTML);
-
-  // Update Vite Config
-  require("./lib/update-vite-config")(root, ts);
-
-  console.log(`\nDone. Now run:\n`);
-  if (root !== cwd) {
-    console.log(`  cd ${path.relative(cwd, root)}`);
-  }
-  switch (pkgManager) {
-    case "yarn":
-      console.log("  yarn");
-      console.log("  yarn dev");
-      break;
-    default:
-      console.log(`  ${pkgManager} install`);
-      console.log(`  ${pkgManager} run dev`);
-      break;
-  }
-  console.log();
+if (targetDir === undefined) {
+  overwrite = false;
 }
 
-function copy(src, dest) {
-  const stat = fs.statSync(src);
-  if (stat.isDirectory()) {
-    copyDir(src, dest);
-  } else {
-    fs.copyFileSync(src, dest);
+// Start the inquisition!
+inquirer
+  .prompt([
+    {
+      type: "input",
+      name: "dir",
+      message: "Project name:",
+      default: defaultProjectName,
+      when: () => defaultProjectName === "vite-pwa",
+    },
+    {
+      type: "confirm",
+      name: "overwrite",
+      default: false,
+      message: ({ dir }) =>
+        (dir === "."
+          ? "Current directory"
+          : `Target directory "${dir || targetDir}"`) +
+        " is not empty. Remove existing files and continue?",
+      when: ({ dir }) => !isEmpty(dir) && overwrite !== true,
+    },
+    {
+      type: "input",
+      name: "package",
+      message: "Package name:",
+      default: ({ dir }) =>
+        dir ? toValidPackageName(dir) : toValidPackageName(targetDir),
+      validate: (package) =>
+        isValidPackageName(package) ? true : "Invalid package name",
+      when: (answers) =>
+        continuePrompts(answers) &&
+        (answers.dir
+          ? !isValidPackageName(answers.dir)
+          : !isValidPackageName(targetDir)),
+    },
+    {
+      type: "search-list",
+      name: "framework",
+      message: "Select a framework:",
+      default: () =>
+        framework
+          ? isAvailableFramework(framework)?.value
+          : frameworks[0].value,
+      choices: frameworks,
+      when: (answers) =>
+        continuePrompts(answers) &&
+        (framework ? !isAvailableFramework(framework) : true),
+    },
+    {
+      type: "confirm",
+      name: "typescript",
+      default: typescript === undefined ? false : true,
+      message: "Use TypeScript?",
+      when: continuePrompts && typescript === undefined,
+    },
+  ])
+  .then((answers) => {
+    if (continuePrompts(answers) === false) {
+      throw new Error(chalk.red("✖") + " Operation cancelled");
+    }
+
+    const options = Object.assign(
+      {
+        dir: targetDir,
+        framework: framework ? framework.toLowerCase() : "",
+        package: targetDir,
+        typescript,
+        overwrite,
+      },
+      Object.assign({ package: answers.dir }, answers)
+    );
+
+    // Processing files
+    const cwd = process.cwd();
+    const createViteDir = path.dirname(require.resolve("create-vite"));
+    const renameFiles = {
+      _gitignore: ".gitignore",
+    };
+
+    const root = path.join(cwd, options.dir);
+
+    if (options.overwrite) {
+      emptyDirSync(root);
+    } else {
+      ensureDirSync(root);
+    }
+
+    const {color} = isAvailableFramework(options.framework);
+
+    console.log(`\nScaffolding ${chalk[color](options.framework)} project${options.typescript ? chalk.bold(' with TypeScript') : ''} in:\n${root}`);
+
+    const template = options.framework + (options.typescript ? "-ts" : "");
+
+    // Copy files in
+    copySync(path.join(createViteDir, `template-${template}`), root);
+    copySync(path.join(__dirname, "templates"), root);
+    for (const [oldName, newName] of Object.entries(renameFiles)) {
+      moveSync(path.join(root, oldName), path.join(root, newName));
+    }
+
+    // Update package file
+    const pkg = require(path.join(root, "package.json"));
+    pkg.name = options.package;
+    writeJsonSync(
+      path.join(root, "package.json"),
+      require("./lib/update-package")(pkg, options.typescript),
+      { spaces: 2 }
+    );
+
+    // Update index.html to include PWA stuff
+    const indexHTML = fs.readFileSync(path.join(root, "index.html"), "utf-8");
+    const updatedHTML = posthtml()
+      .use(require("./lib/posthtml-add-pwa.js")())
+      .process(indexHTML, { sync: true }).html;
+    fs.writeFileSync(path.join(root, "index.html"), updatedHTML);
+
+    // Update Vite Config
+    require("./lib/update-vite-config")(root, options.typescript);
+
+    // Close out
+    const pkgManager = getPkgManager();
+    console.log("\nDone. Now run:\n");
+    if (root !== cwd) {
+      console.log(`  cd ${path.relative(cwd, root)}`);
+    }
+    switch (pkgManager) {
+      case "yarn":
+        console.log(`  yarn`);
+        console.log("  yarn dev");
+        break;
+      default:
+        console.log(`  ${pkgManager} install`);
+        console.log(`  ${pkgManager} run dev`);
+        break;
+    }
+    console.log();
+  })
+  .catch((e) => {
+    console.error(e.message);
+  });
+
+// Prompt Helper Functions
+function continuePrompts({ dir, overwrite }) {
+  if (
+    !(
+      fs.existsSync(dir || targetDir) &&
+      fs.readdirSync(dir || targetDir).length === 0
+    ) &&
+    overwrite === false
+  ) {
+    return false;
   }
+
+  return true;
+}
+
+function isEmpty(dir) {
+  if (!fs.existsSync(dir || targetDir)) return true;
+
+  return fs.readdirSync(dir || targetDir).length === 0;
 }
 
 function isValidPackageName(projectName) {
@@ -356,49 +238,17 @@ function toValidPackageName(projectName) {
     .replace(/[^a-z0-9-~]+/g, "-");
 }
 
-function copyDir(srcDir, destDir) {
-  fs.mkdirSync(destDir, { recursive: true });
-  for (const file of fs.readdirSync(srcDir)) {
-    const srcFile = path.resolve(srcDir, file);
-    const destFile = path.resolve(destDir, file);
-    copy(srcFile, destFile);
-  }
-}
-
-function isEmpty(path) {
-  return fs.readdirSync(path).length === 0;
-}
-
-function emptyDir(dir) {
-  if (!fs.existsSync(dir)) {
-    return;
-  }
-  for (const file of fs.readdirSync(dir)) {
-    const abs = path.resolve(dir, file);
-    // baseline is Node 12 so can't use rmSync :(
-    if (fs.lstatSync(abs).isDirectory()) {
-      emptyDir(abs);
-      fs.rmdirSync(abs);
-    } else {
-      fs.unlinkSync(abs);
-    }
-  }
+function isAvailableFramework(fr) {
+  return frameworks.find((f) => f.value === fr.toLowerCase());
 }
 
 /**
  * @param {string | undefined} userAgent process.env.npm_config_user_agent
  * @returns object | undefined
  */
-function pkgFromUserAgent(userAgent) {
-  if (!userAgent) return undefined;
+function getPkgManager(userAgent = process.env.npm_config_user_agent) {
+  if (!userAgent) return "npm";
   const pkgSpec = userAgent.split(" ")[0];
   const pkgSpecArr = pkgSpec.split("/");
-  return {
-    name: pkgSpecArr[0],
-    version: pkgSpecArr[1],
-  };
+  return pkgSpecArr[0] || "npm";
 }
-
-init().catch((e) => {
-  console.error(e);
-});
