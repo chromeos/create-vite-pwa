@@ -1,8 +1,17 @@
 {
-  "name": "vite-pwa-starter",
+  "name": "create-vite-pwa",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "bin": {
+    "create-vite-pwa": "index.js",
+    "cvpwa": "index.js"
+  },
+  "files": [
+    "index.js",
+    "lib/*",
+    "templates"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "lint": "prettier",
@@ -10,14 +19,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/googlestaging/vite-pwa-starter.git"
+    "url": "git+https://github.com/chromeos/create-vite-pwa.git"
   },
-  "author": "",
+  "author": "Sam Richard",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/googlestaging/vite-pwa-starter/issues"
+    "url": "https://github.com/chromeos/create-vite-pwa/issues"
   },
-  "homepage": "https://github.com/googlestaging/vite-pwa-starter#readme",
+  "homepage": "https://github.com/chromeos/create-vite-pwa#readme",
   "dependencies": {
     "chalk": "^4.1.2",
     "create-vite": "^2.5.4",
@@ -30,5 +39,8 @@
   },
   "devDependencies": {
     "prettier": "^2.3.2"
+  },
+  "engines": {
+    "node": ">=12.0.0"
   }
 }
