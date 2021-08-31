@@ -52,12 +52,12 @@ const frameworks = Object.entries({
 
 // Get default args
 let targetDir = argv._[0];
-let framework = argv.framework || argv.f;
-let typescript = argv.typescript || argv.ts;
+let framework = argv.f;
+let typescript = argv.ts;
 let overwrite = argv.overwrite;
 const defaultProjectName = !targetDir ? "vite-pwa" : targetDir;
 
-if (argv.javascript || argv.js) {
+if (argv.js) {
   typescript = false;
 }
 
