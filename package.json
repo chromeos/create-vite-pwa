@@ -35,9 +35,7 @@
     "inquirer-search-list": "^1.2.6",
     "jscodeshift": "^0.13.0",
     "minimist": "^1.2.5",
-    "posthtml": "^0.16.5"
-  },
-  "devDependencies": {
+    "posthtml": "^0.16.5",
     "prettier": "^2.3.2"
   },
   "engines": {
