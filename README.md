@@ -12,7 +12,7 @@ This is an enhancement to the [create Vite](https://github.com/vitejs/vite/tree/
 
 ## Usage
 
-Run `npm init create-vite-pwa [PROJECT-DIR]`.
+Run `npm init vite-pwa [PROJECT-DIR]`.
 
 You can pass the following flags in to set options instead of going through the prompts:
 
