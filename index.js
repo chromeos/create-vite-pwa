@@ -42,7 +42,7 @@ const frameworks = Object.entries({
   vue: "green",
   react: "cyan",
   preact: "magenta",
-  "lit-element": "blue",
+  lit: "blue",
   svelte: "red",
 }).map(([name, color]) => ({
   name: chalk[color](name),
